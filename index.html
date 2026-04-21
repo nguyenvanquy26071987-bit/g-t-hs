@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Gọi Tên - Kiểm Tra Bài Cũ</title>
+    <style>
+        body { 
+            display: flex; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f4f7f6; 
+            margin: 0; 
+            height: 100vh; 
+        }
+        
+        /* Cột bên trái: Nhập danh sách */
+        .left-panel { 
+            width: 30%; 
+            padding: 25px; 
+            background: #ffffff; 
+            border-right: 3px solid #e0e0e0; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+        .left-panel h2 { color: #2980b9; margin-top: 0; font-size: 22px; }
+        .left-panel p { color: #555; margin-bottom: 10px; font-size: 15px; }
+        textarea { 
+            flex-grow: 1; 
+            font-size: 16px; 
+            padding: 15px; 
+            line-height: 1.5;
+            resize: none; 
+            border-radius: 8px; 
+            border: 2px solid #bdc3c7; 
+            outline: none;
+            transition: 0.3s;
+        }
+        textarea:focus { border-color: #3498db; }
+
+        /* Cột bên phải: Vòng quay may mắn */
+        .right-panel { 
+            width: 70%; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+        }
+        
+        .wheel-container { 
+            width: 350px; 
+            height: 350px; 
+            border-radius: 50%; 
+            border: 15px solid #ffffff; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: #fff; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+            position: relative; 
+            transition: all 0.3s ease; 
+        }
+        
+        .name-display { 
+            font-size: 2.2em; 
+            font-weight: bold; 
+            color: #2c3e50; 
+            text-align: center; 
+            padding: 20px; 
+            word-wrap: break-word;
+            max-width: 90%;
+        }
+
+        .timer { 
+            font-size: 2em; 
+            color: #d35400; 
+            margin-top: 25px; 
+            font-weight: bold; 
+            background: rgba(255,255,255,0.8);
+            padding: 10px 30px;
+            border-radius: 30px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .btn { 
+            margin-top: 30px; 
+            padding: 18px 40px; 
+            font-size: 1.3em; 
+            border: none; 
+            border-radius: 50px; 
+            background: #e74c3c; 
+            color: white; 
+            cursor: pointer; 
+            transition: 0.3s; 
+            font-weight: bold; 
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+            text-transform: uppercase;
+        }
+        .btn:hover { background: #c0392b; transform: translateY(-2px); }
+        .btn:disabled { background: #95a5a6; cursor: not-allowed; box-shadow: none; transform: translateY(0); }
+
+        .congrats { 
+            display: none; 
+            font-size: 2em; 
+            color: #1e8449; 
+            margin-top: 25px; 
+            font-weight: bold; 
+            text-align: center; 
+            background: #d4efdf;
+            padding: 20px 40px;
+            border-radius: 15px;
+            border: 2px dashed #27ae60;
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; 
+        }
+
+        /* Hiệu ứng nhấp nháy cho vòng quay */
+        @keyframes spinColor { 
+            0% { border-color: #3498db; transform: scale(1); } 
+            25% { border-color: #e74c3c; } 
+            50% { border-color: #f1c40f; transform: scale(1.05); } 
+            75% { border-color: #2ecc71; } 
+            100% { border-color: #9b59b6; transform: scale(1); } 
+        }
+        .spinning { animation: spinColor 0.4s linear infinite; }
+
+        @keyframes popIn { 
+            0% { transform: scale(0.5); opacity: 0; } 
+            100% { transform: scale(1); opacity: 1; } 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="left-panel">
+        <h2>Danh sách lớp</h2>
+        <p>Nhập tên học sinh (mỗi em một dòng):</p>
+        <textarea id="studentList">
+Nguyễn Văn A
+Trần Thị B
+Lê Hoàng C
+Phạm Văn D
+Hoàng Thị E
+Ngô Văn F
+        </textarea>
+    </div>
+
+    <div class="right-panel">
+        <div class="wheel-container" id="wheel">
+            <div class="name-display" id="currentName">Sẵn sàng!</div>
+        </div>
+        
+        <div class="timer" id="timerDisplay">Đồng hồ: 10s</div>
+        
+        <button class="btn" id="spinBtn" onclick="startSpin()">BẮT ĐẦU QUAY</button>
+        
+        <div class="congrats" id="congratsMsg"></div>
+    </div>
+
+    <script>
+        let spinInterval;
+        let countdownInterval;
+        
+        function startSpin() {
+            // Lấy danh sách từ ô text, xóa khoảng trắng thừa và lọc bỏ các dòng trống
+            const listText = document.getElementById('studentList').value;
+            const students = listText.split('\n').map(s => s.trim()).filter(s => s !== '');
+            
+            if (students.length === 0) {
+                alert('Thầy vui lòng nhập ít nhất 1 tên học sinh vào danh sách bên trái ạ!');
+                return;
+            }
+
+            const nameDisplay = document.getElementById('currentName');
+            const timerDisplay = document.getElementById('timerDisplay');
+            const btn = document.getElementById('spinBtn');
+            const wheel = document.getElementById('wheel');
+            const congratsMsg = document.getElementById('congratsMsg');
+            
+            // Khóa nút và ẩn câu chúc mừng cũ
+            btn.disabled = true;
+            congratsMsg.style.display = 'none';
+            wheel.classList.add('spinning'); // Bật hiệu ứng đổi màu viền
+            
+            let timeLeft = 10;
+            timerDisplay.innerText = `Đồng hồ: ${timeLeft}s`;
+            
+            // Hiệu ứng lướt tên nhanh (50ms đổi tên 1 lần)
+            spinInterval = setInterval(() => {
+                const randomIndex = Math.floor(Math.random() * students.length);
+                nameDisplay.innerText = students[randomIndex];
+            }, 50);
+
+            // Đếm ngược từng giây
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.innerText = `Đồng hồ: ${timeLeft}s`;
+                
+                // Khi hết 10 giây
+                if (timeLeft <= 0) {
+                    clearInterval(spinInterval);
+                    clearInterval(countdownInterval);
+                    
+                    // Chốt kết quả cuối cùng
+                    const finalIndex = Math.floor(Math.random() * students.length);
+                    const chosenStudent = students[finalIndex];
+                    nameDisplay.innerText = chosenStudent;
+                    
+                    // Dừng hiệu ứng vòng quay và hiện lời chúc
+                    wheel.classList.remove('spinning');
+                    timerDisplay.innerText = "Hết giờ!";
+                    congratsMsg.innerHTML = `🎉 Chúc mừng em:<br><span style="font-size: 1.5em; color: #c0392b;">${chosenStudent}</span><br>lên bảng kiểm tra bài cũ! 🎉`;
+                    congratsMsg.style.display = 'block';
+                    
+                    // Mở lại nút bấm
+                    btn.disabled = false;
+                    btn.innerText = "QUAY LẠI LẦN NỮA";
+                }
+            }, 1000); // 1000ms = 1 giây
+        }
+    </script>
+</body>
+</html>
